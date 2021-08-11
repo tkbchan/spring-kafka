@@ -22,5 +22,6 @@ public class UserResource {
         kafkaTemplate.send(AppConfiguration.topic, message);
 
         return "Published Successfully";
+
     }
 }
