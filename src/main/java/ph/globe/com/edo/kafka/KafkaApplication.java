@@ -16,8 +16,6 @@ import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
 @EnableKafka
-@Retryable(value = Exception.class, maxAttemptsExpression = "3",
-		backoff = @Backoff(delayExpression = "1000"))
 public class KafkaApplication {
 
 	public static void main(String[] args) throws Exception {
