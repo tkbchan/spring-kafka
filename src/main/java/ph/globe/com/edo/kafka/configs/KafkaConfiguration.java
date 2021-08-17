@@ -67,6 +67,7 @@ public class KafkaConfiguration {
         factory.setRetryTemplate(retryTemplate);
         factory.setRecoveryCallback(context -> {
             log.error("RetryPolicy limit has been exceeded! You should really handle this better.");
+            KafkaConfiguration.this.kafkaTemplate().send(AppConfiguration.topic, "message");
             return null;
         });
         return factory;
