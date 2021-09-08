@@ -1,19 +1,25 @@
 package ph.globe.com.edo.kafka.configs;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.boot.ApplicationRunner;
 import org.springframework.boot.autoconfigure.kafka.ConcurrentKafkaListenerContainerFactoryConfigurer;
 import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Profile;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.*;
+import org.springframework.kafka.listener.DeadLetterPublishingRecoverer;
+import org.springframework.kafka.listener.SeekToCurrentErrorHandler;
 import org.springframework.retry.annotation.EnableRetry;
 import org.springframework.retry.backoff.FixedBackOffPolicy;
 import org.springframework.retry.policy.SimpleRetryPolicy;
 import org.springframework.retry.support.RetryTemplate;
+import org.springframework.util.backoff.FixedBackOff;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -64,30 +70,31 @@ public class KafkaConfiguration {
             ObjectProvider<ConsumerFactory<Object, Object>> kafkaConsumerFactory, RetryTemplate retryTemplate) {
         ConcurrentKafkaListenerContainerFactory<Object, Object> factory = new ConcurrentKafkaListenerContainerFactory<>();
         configurer.configure(factory, (ConsumerFactory<Object, Object>) kafkaConsumerFactory);
-        factory.setRetryTemplate(retryTemplate);
-        factory.setRecoveryCallback(context -> {
-            log.error("RetryPolicy limit has been exceeded! You should really handle this better.");
-            KafkaConfiguration.this.kafkaTemplate().send(AppConfiguration.topic, "message");
-            return null;
-        });
         return factory;
     }
 
-
     @Bean
-    RetryTemplate retryTemplate() {
-        RetryTemplate retryTemplate = new RetryTemplate();
-
-        FixedBackOffPolicy fixedBackOffPolicy = new FixedBackOffPolicy();
-        fixedBackOffPolicy.setBackOffPeriod(3000);
-        retryTemplate.setBackOffPolicy(fixedBackOffPolicy);
-
-        SimpleRetryPolicy retryPolicy = new SimpleRetryPolicy();
-        retryPolicy.setMaxAttempts(3);
-        retryTemplate.setRetryPolicy(retryPolicy);
-
-        return retryTemplate;
+    public SeekToCurrentErrorHandler errorHandler(KafkaOperations<Object, Object> template) {
+        return new SeekToCurrentErrorHandler(
+                new DeadLetterPublishingRecoverer(template), new FixedBackOff(1000L, 2));
     }
 
+    @Bean
+    public NewTopic topic() {
+        return new NewTopic(AppConfiguration.topic, AppConfiguration.numPartitions, (short) 1);
+    }
 
+    @Bean
+    public NewTopic dlt() {
+        return new NewTopic("topic1.DLT", AppConfiguration.numPartitions, (short) 1);
+    }
+
+    @Bean
+    @Profile("default")
+    public ApplicationRunner runner() {
+        return args -> {
+            System.out.println("Hit Enter to terminate");
+            System.in.read();
+        };
+    }
 }
