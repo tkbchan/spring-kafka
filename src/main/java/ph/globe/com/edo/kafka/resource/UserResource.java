@@ -24,4 +24,6 @@ public class UserResource {
         return "Published Successfully";
 
     }
+
+
 }
