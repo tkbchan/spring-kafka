@@ -6,14 +6,12 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.kafka.annotation.EnableKafka;
-import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.kafka.core.KafkaTemplate;
-import org.springframework.kafka.support.KafkaHeaders;
-import org.springframework.messaging.handler.annotation.Header;
-import org.springframework.messaging.handler.annotation.Payload;
+import org.springframework.retry.annotation.Backoff;
+import org.springframework.retry.annotation.Retryable;
 import ph.globe.com.edo.kafka.configs.AppConfiguration;
+import ph.globe.com.edo.kafka.listener.Consumer;
 
-import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
 @SpringBootApplication
@@ -24,10 +22,16 @@ public class KafkaApplication {
 		ConfigurableApplicationContext context = SpringApplication.run(KafkaApplication.class, args);
 		TestBean testBean = context.getBean(TestBean.class);
 		while(true){
-			for (int i = 0; i < 5; i++) {
+			for (int i = 0; i < 50; i++) {
+				try{
+					Thread.sleep(5000);
+
+				} catch (Exception e){
+					System.out.println("exception" + e.getMessage());
+				}
 				testBean.send("This is message " + i);
 			}
-			context.getBean(Listener.class).latch.await(60, TimeUnit.SECONDS);
+			context.getBean(Consumer.Listener.class).latch.await(60, TimeUnit.SECONDS);
 		}
 
 	}
@@ -38,8 +42,8 @@ public class KafkaApplication {
 	}
 
 	@Bean
-	public Listener listener() {
-		return new Listener();
+	public Consumer.Listener listener() {
+		return new Consumer.Listener();
 	}
 
 	public static class TestBean {
@@ -53,23 +57,6 @@ public class KafkaApplication {
 
 	}
 
-	public static class Listener {
 
-		private final CountDownLatch latch = new CountDownLatch(3);
-
-		private int count;
-
-		@KafkaListener(topics = AppConfiguration.topic, groupId = AppConfiguration.groupid, containerFactory = "kafkaListenerContainerFactory")
-		public void listen(@Payload String message, @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition) {
-			System.out.println("Received: " + message + " attempt " + ++count);
-			if (this.count < 3) {
-				throw new RuntimeException("retry");
-			}
-			System.out.println("Successfully Received: " + message + " (partition: " + partition + ")");
-			this.count = 0;
-			this.latch.countDown();
-		}
-
-	}
 
 }
