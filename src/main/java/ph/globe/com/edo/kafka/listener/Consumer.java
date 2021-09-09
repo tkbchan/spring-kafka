@@ -25,7 +25,7 @@ public class Consumer {
         @KafkaListener(topics = AppConfiguration.topic, groupId = AppConfiguration.groupid, containerFactory = "kafkaListenerContainerFactory")
         public void listen(@Payload String message, @Header(KafkaHeaders.RECEIVED_PARTITION_ID) int partition) {
             try{
-                if (message.startsWith("fail")) {
+                if (message.startsWith("This")) {
                     throw new RuntimeException("failed");
                 }
                 System.out.println("Successfully Received: " + message + " (partition: " + partition + ")");
@@ -39,7 +39,7 @@ public class Consumer {
             }
         }
 
-        @KafkaListener(id = "dltGroup", topics = "topic1.DLT")
+        @KafkaListener(id = "dltGroup", topics = AppConfiguration.deadTopic)
         public void dltListen(String in) {
             logger.info("Received from DLT: " + in);
             this.exec.execute(() -> System.out.println("Hit Enter to terminate..."));
