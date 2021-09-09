@@ -19,7 +19,7 @@ public class UserResource {
     @GetMapping ("/publish/{message}")
     public String post(@PathVariable("message") final String message){
 
-        kafkaTemplate.send(AppConfiguration.topic, message);
+        this.kafkaTemplate.send(AppConfiguration.topic, message);
 
         return "Published Successfully";
 

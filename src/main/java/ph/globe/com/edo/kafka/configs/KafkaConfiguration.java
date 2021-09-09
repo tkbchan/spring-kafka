@@ -86,7 +86,7 @@ public class KafkaConfiguration {
 
     @Bean
     public NewTopic dlt() {
-        return new NewTopic("topic1.DLT", AppConfiguration.numPartitions, (short) 1);
+        return new NewTopic(AppConfiguration.deadTopic, AppConfiguration.numPartitions, (short) 1);
     }
 
     @Bean
